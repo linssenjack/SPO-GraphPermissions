@@ -74,6 +74,8 @@ namespace SPOPermissionsExporter
             Console.WriteLine("Please enter your credentials when prompted.\n");
 
             // Using InteractiveBrowserCredential for user authentication
+            // Note: This uses Microsoft Graph Explorer's public client ID which is intended for testing and development.
+            // For production use, register your own application in Azure AD and use your own client ID.
             var credential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
             {
                 TenantId = "common", // Use "common" for multi-tenant or specify your tenant ID
@@ -278,13 +280,37 @@ namespace SPOPermissionsExporter
                 {
                     foreach (var perm in permissions.Value)
                     {
+                        var grantedTo = "Unknown";
+                        
+                        // Check for user permissions
+                        if (perm.GrantedToV2?.User?.DisplayName != null)
+                        {
+                            grantedTo = perm.GrantedToV2.User.DisplayName;
+                        }
+                        // Check for group permissions
+                        else if (perm.GrantedToV2?.Group?.DisplayName != null)
+                        {
+                            grantedTo = $"Group: {perm.GrantedToV2.Group.DisplayName}";
+                        }
+                        // Check for multiple identities
+                        else if (perm.GrantedToIdentitiesV2 != null && perm.GrantedToIdentitiesV2.Any())
+                        {
+                            var identity = perm.GrantedToIdentitiesV2.First();
+                            if (identity.User?.DisplayName != null)
+                            {
+                                grantedTo = identity.User.DisplayName;
+                            }
+                            else if (identity.Group?.DisplayName != null)
+                            {
+                                grantedTo = $"Group: {identity.Group.DisplayName}";
+                            }
+                        }
+                        
                         var permInfo = new PermissionInfo
                         {
                             Id = perm.Id ?? "",
                             Roles = perm.Roles != null ? string.Join(", ", perm.Roles) : "None",
-                            GrantedTo = perm.GrantedToV2?.User?.DisplayName ?? 
-                                       perm.GrantedToIdentitiesV2?.FirstOrDefault()?.User?.DisplayName ?? 
-                                       "Unknown",
+                            GrantedTo = grantedTo,
                             PermissionType = perm.Link != null ? "Link" : 
                                            perm.GrantedToV2 != null ? "User/Group" : 
                                            "Inherited"
@@ -314,7 +340,12 @@ namespace SPOPermissionsExporter
             try
             {
                 var fileName = $"Permissions_{siteName}_{libraryName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
-                fileName = string.Join("_", fileName.Split(Path.GetInvalidFileNameChars()));
+                
+                // Sanitize filename by replacing invalid characters with underscore
+                foreach (var c in Path.GetInvalidFileNameChars())
+                {
+                    fileName = fileName.Replace(c, '_');
+                }
 
                 using (var writer = new StreamWriter(fileName, false, Encoding.UTF8))
                 {
