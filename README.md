@@ -17,6 +17,30 @@ A Windows .NET console application that lists all SharePoint sites, allows you t
 - Microsoft 365 tenant with SharePoint Online
 - Appropriate permissions to access SharePoint sites and read permissions
 
+## Configuration
+
+### Using the Default Client ID (Development/Testing)
+
+The application uses Microsoft Graph Explorer's public client ID by default, which is suitable for development and testing purposes.
+
+### For Production Use (Recommended)
+
+For production environments, you should register your own Azure AD application:
+
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to **Azure Active Directory** > **App registrations** > **New registration**
+3. Configure the application:
+   - **Name**: SPO Permissions Exporter (or your preferred name)
+   - **Supported account types**: Choose appropriate option (e.g., "Accounts in this organizational directory only")
+   - **Redirect URI**: Select "Public client/native (mobile & desktop)" and enter `http://localhost`
+4. After registration, note the **Application (client) ID** and **Directory (tenant) ID**
+5. Under **API permissions**, add the following Microsoft Graph delegated permissions:
+   - `Sites.Read.All`
+   - `Files.Read.All`
+   - `User.Read`
+6. Click **Grant admin consent** for your organization
+7. Update the `ClientId` and `TenantId` in `Program.cs` (lines 80-81) with your values
+
 ## Installation
 
 1. Clone the repository:
